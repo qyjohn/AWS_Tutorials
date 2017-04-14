@@ -19,7 +19,7 @@ mysql> describe logs;
 | errorCode          | varchar(80) | YES  |     | NULL    |       |
 | errorMessage       | text        | YES  |     | NULL    |       |
 | requestParameters  | text        | YES  |     | NULL    |       |
-| responseElements   | text        | YES  |     | NULL    |       |
+| responseElements   | longtext    | YES  |     | NULL    |       |
 | requestID          | varchar(80) | YES  |     | NULL    |       |
 | eventID            | varchar(80) | YES  |     | NULL    |       |
 | eventType          | varchar(24) | YES  |     | NULL    |       |
