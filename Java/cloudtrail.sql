@@ -34,7 +34,7 @@ CREATE TABLE `logs` (
   `errorCode` varchar(80) DEFAULT NULL,
   `errorMessage` text,
   `requestParameters` text,
-  `responseElements` text,
+  `responseElements` longtext,
   `requestID` varchar(80) DEFAULT NULL,
   `eventID` varchar(80) DEFAULT NULL,
   `eventType` varchar(24) DEFAULT NULL,
