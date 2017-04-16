@@ -109,9 +109,9 @@ public class ImportCloudTrailLogs extends Thread
 	{
 		while (!jobs.isEmpty())
 		{
-			String filename = jobs.poll();
-			System.out.println(filename);
-			importLog(filename);
+			String job = jobs.poll();
+			System.out.println(job);
+			importLog(job);
 		}
 	}
 	
@@ -156,21 +156,21 @@ public class ImportCloudTrailLogs extends Thread
 		}
 	}
 
-	public void importLog(String filename)
+	public void importLog(String job)
 	{
 		try
 		{
-			InputStream fileStream = null;
+			InputStream stream = null;
 			if (is_s3)
 			{
-				S3Object s3 = s3_client.getObject(s3_bucket, filename);
-				fileStream = s3.getObjectContent();
+				S3Object s3 = s3_client.getObject(s3_bucket, job);
+				stream = s3.getObjectContent();
 			}
 			else
 			{
-				fileStream = new FileInputStream(filename);
+				stream = new FileInputStream(job);
 			}
-			InputStream gzipStream = new GZIPInputStream(fileStream);
+			InputStream gzipStream = new GZIPInputStream(stream);
 			Reader reader = new InputStreamReader(gzipStream);
 
 			JSONParser parser = new JSONParser();
