@@ -33,15 +33,32 @@ mysql> describe logs;
 import java.io.*;
 import java.sql.*;
 import java.util.*;
+import java.util.zip.*;
 import java.util.concurrent.*;
 import java.math.*;
 import org.json.simple.*;
 import org.json.simple.parser.*;
+import com.amazonaws.regions.*;
+import com.amazonaws.services.s3.*;
+import com.amazonaws.services.s3.model.*;
+
 
 public class ImportCloudTrailLogs extends Thread
 {
+	// JDBC connection to MySQL database
 	public Connection conn = null;
-	ConcurrentLinkedQueue<File> jobs;
+	// S3 related stuff
+	public boolean is_s3 = false;
+	public AmazonS3Client s3_client;
+	public String s3_region, s3_bucket;
+	// A list of jobs to process
+	ConcurrentLinkedQueue<String> jobs;
+
+	/**
+	 *
+	 * Constructor
+	 *
+	 */
 
 	public ImportCloudTrailLogs()
 	{
@@ -68,18 +85,33 @@ public class ImportCloudTrailLogs extends Thread
 		}
 	}
 
-	public void setJobs(ConcurrentLinkedQueue<File> jobs)
+	/**
+	 *
+	 * Job definitions, including S3 stuff derived from input parameter
+	 *
+	 */
+
+	public void setJobs(boolean is, String region, String bucket, ConcurrentLinkedQueue<String> jobs)
 	{
+		is_s3 = is;
+		if (is_s3)
+		{
+			s3_region = region;
+			s3_bucket = bucket;
+			s3_client = new AmazonS3Client();
+			s3_client.configureRegion(Regions.fromName(s3_region));
+		}
 		this.jobs = jobs;
 	}
+
 
 	public void run()
 	{
 		while (!jobs.isEmpty())
 		{
-			File file = jobs.poll();
-			System.out.println(file.getName());
-			importLog(file);
+			String filename = jobs.poll();
+			System.out.println(filename);
+			importLog(filename);
 		}
 	}
 	
@@ -124,12 +156,25 @@ public class ImportCloudTrailLogs extends Thread
 		}
 	}
 
-	public void importLog(File file)
+	public void importLog(String filename)
 	{
 		try
 		{
+			InputStream fileStream = null;
+			if (is_s3)
+			{
+				S3Object s3 = s3_client.getObject(s3_bucket, filename);
+				fileStream = s3.getObjectContent();
+			}
+			else
+			{
+				fileStream = new FileInputStream(filename);
+			}
+			InputStream gzipStream = new GZIPInputStream(fileStream);
+			Reader reader = new InputStreamReader(gzipStream);
+
 			JSONParser parser = new JSONParser();
-			Object obj = parser.parse(new FileReader(file));
+			Object obj = parser.parse(reader);
 			JSONObject jsonObj = (JSONObject) obj;
 			JSONArray records = (JSONArray) jsonObj.get("Records");
 			Iterator it = records.iterator();
@@ -168,34 +213,64 @@ public class ImportCloudTrailLogs extends Thread
 	{
 		try
 		{
-			File file = new File(args[0]);
-			if (file.isDirectory())
+			boolean is_s3 = false;
+			String s3_region = null, s3_bucket = null, s3_key = null;
+			ConcurrentLinkedQueue<String> jobs = new ConcurrentLinkedQueue<String>();
+
+			if (args[0].startsWith("s3://"))
 			{
-				File[] files = file.listFiles();
-				ConcurrentLinkedQueue<File> jobs = new ConcurrentLinkedQueue<File>();
-				for (File currentFile : files)
+				is_s3 = true;
+
+				// Input location is in S3, probably with a prefix
+				AmazonS3URI s3Uri = new AmazonS3URI(args[0]);
+				s3_bucket = s3Uri.getBucket();
+				s3_key = s3Uri.getKey();
+
+				// Obtain the bucket location
+				AmazonS3Client client = new AmazonS3Client();
+				s3_region = client.getBucketLocation(s3_bucket);
+				client.configureRegion(Regions.fromName(s3_region));
+
+				// List all the S3 objects
+				ObjectListing listing = client.listObjects(s3_bucket, s3_key);
+				for (S3ObjectSummary object : listing.getObjectSummaries())
 				{
-					
-					jobs.add(currentFile);
+					System.out.println(object.getKey());
+					jobs.add(object.getKey());
 				}
 
-				int cores = Runtime.getRuntime().availableProcessors();
-				ImportCloudTrailLogs[] ictl = new ImportCloudTrailLogs[cores];
-				for (int i=0; i<cores; i++)
+			}
+			else
+			{
+				// Input location is local disk
+				File file = new File(args[0]);
+				if (file.isDirectory())
 				{
-					ictl[i] = new ImportCloudTrailLogs();
-					ictl[i].setJobs(jobs);
-					ictl[i].start();
+					File[] files = file.listFiles();
+					for (File currentFile : files)
+					{
+					
+						jobs.add(currentFile.getPath());
+					}
 				}
-				for (int i=0; i<cores; i++)
+				else
 				{
-					ictl[i].join();
+					jobs.add(file.getPath());
 				}
 			}
-			else if (file.isFile())
+
+
+			int threads = Runtime.getRuntime().availableProcessors();
+			ImportCloudTrailLogs[] ictl = new ImportCloudTrailLogs[threads];
+			for (int i=0; i<threads; i++)
 			{
-				ImportCloudTrailLogs ictl = new ImportCloudTrailLogs();
-				ictl.importLog(file);
+				ictl[i] = new ImportCloudTrailLogs();
+				ictl[i].setJobs(is_s3, s3_region, s3_bucket, jobs);
+				ictl[i].start();
+			}
+			for (int i=0; i<threads; i++)
+			{
+				ictl[i].join();
 			}
 		} catch (Exception e)
 		{
