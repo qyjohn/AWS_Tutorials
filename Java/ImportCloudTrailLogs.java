@@ -237,6 +237,17 @@ public class ImportCloudTrailLogs extends Thread
 				{
 					jobs.add(object.getKey());
 				}
+				// Recursively listing
+				while (listing.isTruncated())
+				{
+					ListNextBatchOfObjectsRequest request = new ListNextBatchOfObjectsRequest(listing);
+					listing = client.listNextBatchOfObjects(request);
+					for (S3ObjectSummary object : listing.getObjectSummaries())
+					{
+						jobs.add(object.getKey());
+					}
+				}
+
 
 			}
 			else
