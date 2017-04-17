@@ -235,7 +235,6 @@ public class ImportCloudTrailLogs extends Thread
 				ObjectListing listing = client.listObjects(s3_bucket, s3_key);
 				for (S3ObjectSummary object : listing.getObjectSummaries())
 				{
-					System.out.println(object.getKey());
 					jobs.add(object.getKey());
 				}
 
