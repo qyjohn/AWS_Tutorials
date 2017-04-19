@@ -25,6 +25,8 @@ public class TestDDBMapper
 
 	/**
 	 *
+	 * Conditional update example.
+	 *
 	 * For example, you have a test table with "id" as the hash key, and another non-key attribute "total". 
 	 * The following code updates the item when (a) the hash key exists, and (b) the existing value "total" 
 	 * is less than (LT) the new value "total".
