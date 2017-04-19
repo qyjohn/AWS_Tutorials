@@ -33,7 +33,7 @@ public class TestDDBMapper
 	 *
 	 */
 
-	public void test(int id, int total)
+	public void conditionalUpdate(int id, int total)
 	{
 		try
 		{			
