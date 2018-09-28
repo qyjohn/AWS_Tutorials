@@ -13,8 +13,8 @@ public class TestDDB extends Thread
 {
         public AmazonDynamoDBClient client;
 	public String tableName;
-	public int threadId;
-
+	public int batchSize;
+	
         public TestDDB()
         {
                 client = new AmazonDynamoDBClient();
@@ -32,9 +32,9 @@ public class TestDDB extends Thread
 		}
         }
 
-	public void setThreadId(int id)
+	public void setBatchSize(int size)
 	{
-		threadId = id;
+		batchSize = size;
 	}
 
 	public void put(String hash, int sort, String value)
@@ -58,17 +58,16 @@ public class TestDDB extends Thread
 
 	public void run()
 	{
-		int start = 10000000;
-		while (true)
+		while (batchSize >= 0)
 		{
 			try 
 			{
 				String hash = UUID.randomUUID().toString();
-				int sort = start;
-				String value = threadId + "-" + hash + "-" + sort;
+				int sort = batchSize;
+				String value = hash + "-" + sort;
 				put(hash, sort, value);
 
-				start++;
+				batchSize--;
 			} catch (ConditionalCheckFailedException e) 
 			{
 				System.out.println(e.getMessage());
@@ -81,12 +80,14 @@ public class TestDDB extends Thread
         {
 		try 
 		{
-			int threads = Integer.parseInt(args[0]);
+			int items   = Integer.parseInt(args[0]);
+			int threads = Integer.parseInt(args[1]);
+			int batch   = (int) (items / threads) + 1;
 			TestDDB tests[] = new TestDDB [threads];
 			for (int i=0; i<threads; i++)
 			{
 				tests[i] = new TestDDB();
-				tests[i].setThreadId(i);
+				tests[i].setBatchSize(batch);
 				tests[i].start();
 			}
 
