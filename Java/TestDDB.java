@@ -14,7 +14,7 @@ public class TestDDB extends Thread
         public AmazonDynamoDBClient client;
 	public String tableName;
 	public int batchSize;
-	
+
         public TestDDB()
         {
                 client = new AmazonDynamoDBClient();
@@ -39,10 +39,16 @@ public class TestDDB extends Thread
 
 	public void put(String hash, int sort, String value)
 	{
+		Random r = new Random();
+		for (int i=0; i<10; i++)
+		{
+			value = value + value;
+		}
 		HashMap<String, AttributeValue> item = new HashMap<String, AttributeValue>();
 		item.put("hash", new AttributeValue(hash));
 		item.put("sort", new AttributeValue().withN(Integer.toString(sort)));
 		item.put("val", new AttributeValue(value));
+		item.put("random", new AttributeValue().withN(Integer.toString(r.nextInt(10))));
 
 		PutItemRequest putItemRequest = new PutItemRequest().withTableName(tableName).withItem(item);
 
@@ -58,7 +64,7 @@ public class TestDDB extends Thread
 
 	public void run()
 	{
-		while (batchSize >= 0)
+		while (batchSize>=0)
 		{
 			try 
 			{
@@ -80,9 +86,9 @@ public class TestDDB extends Thread
         {
 		try 
 		{
-			int items   = Integer.parseInt(args[0]);
+			int total   = Integer.parseInt(args[0]);
 			int threads = Integer.parseInt(args[1]);
-			int batch   = (int) (items / threads) + 1;
+			int batch   = (int) (total / threads) + 1;
 			TestDDB tests[] = new TestDDB [threads];
 			for (int i=0; i<threads; i++)
 			{
