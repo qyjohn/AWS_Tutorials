@@ -1,7 +1,4 @@
 import java.util.*;
-import com.amazonaws.*;
-//import com.amazonaws.auth.*;
-//import com.amazonaws.auth.profile.*;
 import com.amazonaws.regions.*;
 import com.amazonaws.services.dynamodbv2.*;
 import com.amazonaws.services.dynamodbv2.model.*;
